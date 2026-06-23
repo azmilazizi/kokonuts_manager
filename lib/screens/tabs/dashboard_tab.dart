@@ -194,6 +194,24 @@ class _DashboardTabState extends State<DashboardTab>
     return body;
   }
 
+  String? _formatPeriodLabel(Map<String, dynamic>? prev) {
+    if (prev == null) return null;
+    final fromStr = prev['date_from'] as String?;
+    final toStr = prev['date_to'] as String?;
+    if (fromStr == null || toStr == null) return null;
+    final from = DateTime.tryParse(fromStr);
+    final to = DateTime.tryParse(toStr);
+    if (from == null || to == null) return null;
+    final d = DateFormat('d MMM');
+    if (from.year == to.year && from.month == to.month && from.day == to.day) {
+      return 'vs ${d.format(from)}';
+    }
+    if (from.year == to.year && from.month == to.month) {
+      return 'vs ${DateFormat('d').format(from)}–${d.format(to)}';
+    }
+    return 'vs ${d.format(from)} – ${d.format(to)}';
+  }
+
   void _selectPreset(String preset) async {
     if (preset == 'Custom') {
       final picked = await showDateRangePicker(
@@ -356,31 +374,57 @@ class _DashboardTabState extends State<DashboardTab>
                 crossAxisCount: isTablet ? 3 : 2,
                 mainAxisSpacing: gridGap,
                 crossAxisSpacing: gridGap,
-                childAspectRatio: isTablet ? 1.8 : 1.5,
+                childAspectRatio: isTablet ? 1.6 : 1.3,
                 children: () {
                   final changes = _summary!['changes'] as Map<String, dynamic>? ?? {};
+                  final prevPeriod = _summary!['previous_period'] as Map<String, dynamic>?;
+                  final periodLabel = _formatPeriodLabel(prevPeriod);
+
                   double? pct(String key) {
                     final c = changes[key] as Map<String, dynamic>?;
                     return (c?['percent'] as num?)?.toDouble();
                   }
+
+                  String? absCurrency(String key) {
+                    final c = changes[key] as Map<String, dynamic>?;
+                    final abs = (c?['absolute'] as num?)?.toDouble();
+                    if (abs == null) return null;
+                    final sign = abs >= 0 ? '+' : '-';
+                    return '${sign}RM ${_currency.format(abs.abs())}';
+                  }
+
+                  String? absCount(String key) {
+                    final c = changes[key] as Map<String, dynamic>?;
+                    final abs = (c?['absolute'] as num?)?.toDouble();
+                    if (abs == null) return null;
+                    final sign = abs >= 0 ? '+' : '';
+                    return '$sign${abs.toInt()}';
+                  }
+
                   return [
                     _KpiCard(
                       label: 'Net Sales',
                       value: 'RM ${_currency.format(_summary!['net_sales'] ?? 0)}',
                       color: theme.colorScheme.primary,
                       changePercent: pct('net_sales'),
+                      changeAbsolute: absCurrency('net_sales'),
+                      periodLabel: periodLabel,
                     ),
                     _KpiCard(
                       label: 'Transactions',
                       value: '${_summary!['transaction_count'] ?? 0}',
                       color: theme.colorScheme.primary,
                       changePercent: pct('transaction_count'),
+                      changeAbsolute: absCount('transaction_count'),
+                      periodLabel: periodLabel,
                     ),
                     _KpiCard(
                       label: 'Total Refunds',
                       value: 'RM ${_currency.format(_summary!['total_refunds'] ?? 0)}',
                       color: Colors.redAccent,
                       changePercent: pct('total_refunds'),
+                      changeAbsolute: absCurrency('total_refunds'),
+                      periodLabel: periodLabel,
                       isPositiveGood: false,
                     ),
                     _KpiCard(
@@ -388,12 +432,16 @@ class _DashboardTabState extends State<DashboardTab>
                       value: 'RM ${_currency.format(_summary!['average_transaction_value'] ?? 0)}',
                       color: theme.colorScheme.primary,
                       changePercent: pct('average_transaction_value'),
+                      changeAbsolute: absCurrency('average_transaction_value'),
+                      periodLabel: periodLabel,
                     ),
                     _KpiCard(
                       label: 'Discounts',
                       value: 'RM ${_currency.format(_summary!['total_discounts'] ?? 0)}',
                       color: Colors.orangeAccent,
                       changePercent: pct('total_discounts'),
+                      changeAbsolute: absCurrency('total_discounts'),
+                      periodLabel: periodLabel,
                       isPositiveGood: false,
                     ),
                     _KpiCard(
@@ -401,6 +449,8 @@ class _DashboardTabState extends State<DashboardTab>
                       value: 'RM ${_currency.format(_summary!['total_tax'] ?? 0)}',
                       color: Colors.orangeAccent,
                       changePercent: pct('total_tax'),
+                      changeAbsolute: absCurrency('total_tax'),
+                      periodLabel: periodLabel,
                     ),
                   ];
                 }(),
@@ -536,6 +586,8 @@ class _KpiCard extends StatelessWidget {
   final String value;
   final Color color;
   final double? changePercent;
+  final String? changeAbsolute;
+  final String? periodLabel;
   final bool isPositiveGood;
 
   const _KpiCard({
@@ -543,6 +595,8 @@ class _KpiCard extends StatelessWidget {
     required this.value,
     required this.color,
     this.changePercent,
+    this.changeAbsolute,
+    this.periodLabel,
     this.isPositiveGood = true,
   });
 
@@ -589,19 +643,49 @@ class _KpiCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             if (changeLabel != null)
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(changeIcon, size: 11, color: changeColor),
-                  const SizedBox(width: 2),
-                  Text(
-                    changeLabel,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: changeColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(changeIcon, size: 11, color: changeColor),
+                      const SizedBox(width: 2),
+                      Text(
+                        changeLabel,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: changeColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                        ),
+                      ),
+                      if (changeAbsolute != null) ...[
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            changeAbsolute!,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: changeColor?.withAlpha(200),
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
+                  if (periodLabel != null)
+                    Text(
+                      periodLabel!,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withAlpha(120),
+                        fontSize: 9,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                 ],
               ),
           ],
