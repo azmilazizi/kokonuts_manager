@@ -40,9 +40,7 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this)
       ..addListener(() {
-        if (!_tabController.indexIsChanging) {
-          setState(() => _currentTab = _tabController.index);
-        }
+        setState(() => _currentTab = _tabController.index);
       });
     WidgetsBinding.instance.addPostFrameCallback((_) => _setupPush());
   }
