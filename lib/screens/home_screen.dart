@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:intl/intl.dart';
 import '../app/app_state.dart';
 import '../app/app_state_scope.dart';
 import '../firebase_options.dart';
@@ -57,14 +58,53 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  static final _currency = NumberFormat('#,##0.00');
+  static final _dtFmt = DateFormat('d MMM y, h:mm a');
+
   void _onForegroundMessage(RemoteMessage message) {
     if (!mounted) return;
-    final title = message.notification?.title ?? 'Shift Update';
-    final body = message.notification?.body ?? '';
+    final data = message.data;
+    final type = data['type'] ?? '';
+
+    String title;
+    List<String> lines;
+    IconData icon;
+
+    if (type == 'shift_opened') {
+      final warehouse = data['warehouse_name'] as String? ?? '';
+      title = 'Shift Opened${warehouse.isNotEmpty ? ' — $warehouse' : ''}';
+      lines = [];
+      final openedAt = data['opened_at'];
+      if (openedAt != null) {
+        try {
+          lines.add(_dtFmt.format(DateTime.parse(openedAt).toLocal()));
+        } catch (_) {}
+      }
+      final cash = double.tryParse(data['opening_cash']?.toString() ?? '');
+      if (cash != null) lines.add('Opening: RM ${_currency.format(cash)}');
+      icon = Icons.lock_open;
+    } else if (type == 'shift_closed') {
+      final warehouse = data['warehouse_name'] as String? ?? '';
+      title = 'Shift Closed${warehouse.isNotEmpty ? ' — $warehouse' : ''}';
+      lines = [];
+      final closing = double.tryParse(data['closing_cash']?.toString() ?? '');
+      if (closing != null) lines.add('Closing: RM ${_currency.format(closing)}');
+      final diff = double.tryParse(data['cash_difference']?.toString() ?? '');
+      if (diff != null) {
+        final sign = diff >= 0 ? '+' : '';
+        lines.add('Difference: $sign RM ${_currency.format(diff.abs())}');
+      }
+      icon = Icons.lock_outline;
+    } else {
+      title = message.notification?.title ?? 'Shift Update';
+      lines = [if ((message.notification?.body ?? '').isNotEmpty) message.notification!.body!];
+      icon = Icons.notifications;
+    }
+
     ScaffoldMessenger.of(context).showMaterialBanner(
       MaterialBanner(
         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        leading: const Icon(Icons.notifications, color: Colors.orange),
+        leading: Icon(icon, color: Colors.orange),
         backgroundColor: const Color(0xFF2C2C2E),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,13 +113,12 @@ class _HomeScreenState extends State<HomeScreen>
             Text(title,
                 style: const TextStyle(
                     fontWeight: FontWeight.w600, color: Color(0xFFE5E5EA))),
-            if (body.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(body,
-                    style: const TextStyle(
-                        fontSize: 13, color: Color(0xFFAAAAAA))),
-              ),
+            ...lines.map((l) => Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(l,
+                      style: const TextStyle(
+                          fontSize: 13, color: Color(0xFFAAAAAA))),
+                )),
           ],
         ),
         actions: [
@@ -254,24 +293,27 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
-          child: TabBar(
-            controller: _tabController,
-            indicatorColor: theme.colorScheme.primary,
-            indicatorSize: TabBarIndicatorSize.tab,
-            labelColor: theme.colorScheme.primary,
-            unselectedLabelColor:
-                theme.colorScheme.onSurface.withAlpha(179),
-            dividerHeight: 0,
-            tabs: _tabs.map((t) {
-              final active = _tabs.indexOf(t) == _currentTab;
-              return SizedBox(
-                height: 60,
-                child: Icon(
-                  active ? t.activeIcon : t.icon,
-                  size: 26,
-                ),
-              );
-            }).toList(),
+          child: SafeArea(
+            top: false,
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: theme.colorScheme.primary,
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelColor: theme.colorScheme.primary,
+              unselectedLabelColor:
+                  theme.colorScheme.onSurface.withAlpha(179),
+              dividerHeight: 0,
+              tabs: _tabs.map((t) {
+                final active = _tabs.indexOf(t) == _currentTab;
+                return SizedBox(
+                  height: 60,
+                  child: Icon(
+                    active ? t.activeIcon : t.icon,
+                    size: 26,
+                  ),
+                );
+              }).toList(),
+            ),
           ),
         ),
         body: TabBarView(
