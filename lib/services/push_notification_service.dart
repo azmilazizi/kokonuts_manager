@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
@@ -13,6 +14,9 @@ class PushNotificationService {
       PushNotificationService._();
   factory PushNotificationService() => _instance;
   PushNotificationService._();
+
+  StreamSubscription<RemoteMessage>? _onMessageSub;
+  StreamSubscription<String>? _onTokenRefreshSub;
 
   static void registerBackgroundHandler() {
     FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
@@ -44,10 +48,12 @@ class PushNotificationService {
         await FirebaseMessaging.instance.getToken(vapidKey: vapidKey);
     if (token != null) await _registerToken(authToken, token);
 
-    FirebaseMessaging.instance.onTokenRefresh
+    await _onTokenRefreshSub?.cancel();
+    _onTokenRefreshSub = FirebaseMessaging.instance.onTokenRefresh
         .listen((t) => _registerToken(authToken, t));
 
-    FirebaseMessaging.onMessage.listen(onMessage);
+    await _onMessageSub?.cancel();
+    _onMessageSub = FirebaseMessaging.onMessage.listen(onMessage);
   }
 
   /// Remove the current FCM token from the backend and invalidate it locally.
