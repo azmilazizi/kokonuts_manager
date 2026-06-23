@@ -70,8 +70,9 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (type == 'shift_opened') {
       final warehouse = data['warehouse_name'] as String? ?? '';
-      title = 'Shift Opened${warehouse.isNotEmpty ? ' — $warehouse' : ''}';
+      title = 'Shift Opened';
       lines = [];
+      if (warehouse.isNotEmpty) lines.add(warehouse);
       final openedAt = data['opened_at'];
       if (openedAt != null) {
         try {
@@ -83,8 +84,9 @@ class _HomeScreenState extends State<HomeScreen>
       icon = Icons.lock_open;
     } else if (type == 'shift_closed') {
       final warehouse = data['warehouse_name'] as String? ?? '';
-      title = 'Shift Closed${warehouse.isNotEmpty ? ' — $warehouse' : ''}';
+      title = 'Shift Closed';
       lines = [];
+      if (warehouse.isNotEmpty) lines.add(warehouse);
       final closing = double.tryParse(data['closing_cash']?.toString() ?? '');
       if (closing != null) lines.add('Closing: RM ${_currency.format(closing)}');
       final diff = double.tryParse(data['cash_difference']?.toString() ?? '');
