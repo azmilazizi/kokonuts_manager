@@ -112,7 +112,6 @@ class _LoginScreenState extends State<LoginScreen> {
             constraints: const BoxConstraints(maxWidth: 400),
             child: Form(
               key: _formKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -141,6 +140,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     autocorrect: false,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    onChanged: (_) {
+                      if (_usernameError != null) {
+                        setState(() => _usernameError = null);
+                      }
+                    },
                     decoration: InputDecoration(
                       labelText: 'Username',
                       hintText: 'yourname',
@@ -160,6 +165,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _passwordCtrl,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    onChanged: (_) {
+                      if (_passwordError != null) {
+                        setState(() => _passwordError = null);
+                      }
+                    },
                     onFieldSubmitted: (_) => _loading ? null : _submit(),
                     decoration: InputDecoration(
                       labelText: 'Password',

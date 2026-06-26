@@ -614,6 +614,12 @@ class _KpiCard extends StatelessWidget {
       changeIcon = pct >= 0 ? Icons.arrow_upward : Icons.arrow_downward;
       final sign = pct >= 0 ? '+' : '';
       changeLabel = '$sign${pct.toStringAsFixed(1)}%';
+    } else if (changeAbsolute != null) {
+      // percent is null when previous period had zero data; use absolute sign
+      final isPositive = !changeAbsolute!.startsWith('-');
+      final isGood = isPositiveGood ? isPositive : !isPositive;
+      changeColor = isGood ? Colors.greenAccent : Colors.redAccent;
+      changeIcon = isPositive ? Icons.arrow_upward : Icons.arrow_downward;
     }
 
     return Card(
@@ -642,7 +648,7 @@ class _KpiCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            if (changeLabel != null)
+            if (changeColor != null)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -652,21 +658,22 @@ class _KpiCard extends StatelessWidget {
                     children: [
                       Icon(changeIcon, size: 11, color: changeColor),
                       const SizedBox(width: 2),
-                      Text(
-                        changeLabel,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: changeColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 10,
+                      if (changeLabel != null)
+                        Text(
+                          changeLabel,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: changeColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
                         ),
-                      ),
                       if (changeAbsolute != null) ...[
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
                             changeAbsolute!,
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: changeColor?.withAlpha(200),
+                              color: changeColor.withAlpha(200),
                               fontSize: 10,
                             ),
                             maxLines: 1,
