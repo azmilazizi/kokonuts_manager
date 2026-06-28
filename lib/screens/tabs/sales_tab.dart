@@ -196,7 +196,7 @@ class _SalesTabState extends State<SalesTab>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _ReceiptDetailSheet(
+      builder: (_) => ReceiptDetailSheet(
         receiptNumber: receipt['receipt_number'] as String,
         token: widget.state.token!,
       ),
@@ -438,20 +438,21 @@ class _SalesTabState extends State<SalesTab>
   }
 }
 
-class _ReceiptDetailSheet extends StatefulWidget {
+class ReceiptDetailSheet extends StatefulWidget {
   final String receiptNumber;
   final String token;
 
-  const _ReceiptDetailSheet({
+  const ReceiptDetailSheet({
+    super.key,
     required this.receiptNumber,
     required this.token,
   });
 
   @override
-  State<_ReceiptDetailSheet> createState() => _ReceiptDetailSheetState();
+  State<ReceiptDetailSheet> createState() => _ReceiptDetailSheetState();
 }
 
-class _ReceiptDetailSheetState extends State<_ReceiptDetailSheet> {
+class _ReceiptDetailSheetState extends State<ReceiptDetailSheet> {
   Map<String, dynamic>? _receipt;
   bool _loading = true;
   String? _error;

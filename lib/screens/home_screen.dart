@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -11,9 +12,10 @@ import '../services/push_notification_service.dart';
 import '../services/session_manager.dart';
 import '../widgets/app_logo.dart';
 import 'tabs/dashboard_tab.dart';
-import 'tabs/sales_tab.dart';
+import 'tabs/sales_tab.dart' show SalesTab, ReceiptDetailSheet;
 import 'tabs/shifts_tab.dart';
 import 'tabs/reports_tab.dart';
+import 'notification_preferences_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen>
   ];
 
   int _currentTab = 0;
+  StreamSubscription<RemoteMessage>? _onNotificationTapSub;
 
   @override
   void initState() {
@@ -54,6 +57,37 @@ class _HomeScreenState extends State<HomeScreen>
       vapidKey: DefaultFirebaseOptions.vapidKey,
       onMessage: _onForegroundMessage,
     );
+
+    // Notification tapped while app was in background
+    await _onNotificationTapSub?.cancel();
+    _onNotificationTapSub =
+        FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTap);
+
+    // Notification tapped while app was terminated
+    final initial = await FirebaseMessaging.instance.getInitialMessage();
+    if (initial != null && mounted) _onNotificationTap(initial);
+  }
+
+  void _onNotificationTap(RemoteMessage message) {
+    if (!mounted) return;
+    final data = message.data;
+    if (data['type'] == 'sale_completed') {
+      final receiptNumber = data['receipt_number'] as String? ?? '';
+      if (receiptNumber.isNotEmpty) _openReceiptDetail(receiptNumber);
+    }
+  }
+
+  void _openReceiptDetail(String receiptNumber) {
+    final token = AppStateScope.read(context).token;
+    if (token == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => ReceiptDetailSheet(
+        receiptNumber: receiptNumber,
+        token: token,
+      ),
+    );
   }
 
   static final _currency = NumberFormat('#,##0.00');
@@ -67,8 +101,27 @@ class _HomeScreenState extends State<HomeScreen>
     String title;
     List<String> lines;
     IconData icon;
+    VoidCallback? onView;
 
-    if (type == 'shift_opened') {
+    if (type == 'sale_completed') {
+      final warehouse = data['warehouse_name'] as String? ?? '';
+      final receiptNumber = data['receipt_number'] as String? ?? '';
+      final total = double.tryParse(data['total'] ?? '');
+      final payment = data['payment_method'] as String? ?? '';
+      title = 'New Sale';
+      lines = [];
+      if (warehouse.isNotEmpty) lines.add(warehouse);
+      if (receiptNumber.isNotEmpty) lines.add(receiptNumber);
+      if (total != null) lines.add('RM ${_currency.format(total)}');
+      if (payment.isNotEmpty) lines.add(payment);
+      icon = Icons.receipt_outlined;
+      if (receiptNumber.isNotEmpty) {
+        onView = () {
+          ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+          _openReceiptDetail(receiptNumber);
+        };
+      }
+    } else if (type == 'shift_opened') {
       final warehouse = data['warehouse_name'] as String? ?? '';
       title = 'Shift Opened';
       lines = [];
@@ -87,6 +140,8 @@ class _HomeScreenState extends State<HomeScreen>
       title = 'Shift Closed';
       lines = [];
       if (warehouse.isNotEmpty) lines.add(warehouse);
+      final totalSales = double.tryParse(data['total_sales']?.toString() ?? '');
+      if (totalSales != null) lines.add('Total Sales: RM ${_currency.format(totalSales)}');
       final closing = double.tryParse(data['closing_cash']?.toString() ?? '');
       if (closing != null) lines.add('Closing: RM ${_currency.format(closing)}');
       final diff = double.tryParse(data['cash_difference']?.toString() ?? '');
@@ -122,6 +177,11 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
         actions: [
+          if (onView != null)
+            TextButton(
+              onPressed: onView,
+              child: const Text('View', style: TextStyle(color: Colors.orange)),
+            ),
           TextButton(
             onPressed: () =>
                 ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
@@ -178,6 +238,16 @@ class _HomeScreenState extends State<HomeScreen>
     await AuthExpirationHandler().handleExpired();
   }
 
+  void _showNotificationPreferences(AppState state) {
+    final token = state.token;
+    if (token == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => NotificationPreferencesSheet(authToken: token),
+    );
+  }
+
   void _showActionsSheet(BuildContext context, AppState state) {
     showModalBottomSheet(
       context: context,
@@ -195,6 +265,15 @@ class _HomeScreenState extends State<HomeScreen>
               onTap: () {
                 Navigator.pop(context);
                 _showWarehousePicker(state);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications_outlined),
+              title: const Text('Sales Notifications'),
+              subtitle: const Text('Manage per-outlet alerts'),
+              onTap: () {
+                Navigator.pop(context);
+                _showNotificationPreferences(state);
               },
             ),
             ListTile(
@@ -216,6 +295,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _onNotificationTapSub?.cancel();
     super.dispose();
   }
 
