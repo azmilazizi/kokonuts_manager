@@ -1,5 +1,5 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
 // TODO: Replace all placeholder values below with your actual Firebase project config.
 //
@@ -18,8 +18,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) return web;
+    if (defaultTargetPlatform == TargetPlatform.android) return android;
     throw UnsupportedError(
-      'Push notifications are only configured for the web platform.',
+      'This platform is not supported.',
     );
   }
 
@@ -29,6 +30,14 @@ class DefaultFirebaseOptions {
     messagingSenderId: '83700561890',
     projectId: 'kokonuts-manager',
     authDomain: 'kokonuts-manager.firebaseapp.com',
+    storageBucket: 'kokonuts-manager.firebasestorage.app',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyD3olLvdoE54Xn9zUGEgV_p9k9FDDjaDd8',
+    appId: '1:83700561890:android:209e011dec0d178e40abbb',
+    messagingSenderId: '83700561890',
+    projectId: 'kokonuts-manager',
     storageBucket: 'kokonuts-manager.firebasestorage.app',
   );
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "83700561890",
+    "project_id": "kokonuts-manager",
+    "storage_bucket": "kokonuts-manager.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:83700561890:android:209e011dec0d178e40abbb",
+        "android_client_info": {
+          "package_name": "com.example.kokonuts_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3olLvdoE54Xn9zUGEgV_p9k9FDDjaDd8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

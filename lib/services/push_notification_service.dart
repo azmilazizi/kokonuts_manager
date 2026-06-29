@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
@@ -44,8 +45,9 @@ class PushNotificationService {
 
     if (!granted) return;
 
-    final token =
-        await FirebaseMessaging.instance.getToken(vapidKey: vapidKey);
+    final token = kIsWeb
+        ? await FirebaseMessaging.instance.getToken(vapidKey: vapidKey)
+        : await FirebaseMessaging.instance.getToken();
     if (token != null) await _registerToken(authToken, token);
 
     await _onTokenRefreshSub?.cancel();

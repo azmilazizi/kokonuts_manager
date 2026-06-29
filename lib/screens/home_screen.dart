@@ -11,6 +11,8 @@ import '../services/auth_expiration_handler.dart';
 import '../services/push_notification_service.dart';
 import '../services/session_manager.dart';
 import '../widgets/app_logo.dart';
+import '../utils/fcm_web_stub.dart'
+    if (dart.library.js_interop) '../utils/fcm_web.dart';
 import 'tabs/dashboard_tab.dart';
 import 'tabs/sales_tab.dart' show SalesTab, ReceiptDetailSheet;
 import 'tabs/shifts_tab.dart';
@@ -66,10 +68,21 @@ class _HomeScreenState extends State<HomeScreen>
     // Notification tapped while app was terminated
     final initial = await FirebaseMessaging.instance.getInitialMessage();
     if (initial != null && mounted) _onNotificationTap(initial);
+
+    // Web PWA: postMessage from service worker (backgrounded PWA tap)
+    listenForWebReceiptMessages((receipt) {
+      if (mounted) _openReceiptDetail(receipt);
+    });
+
+    // Web PWA: URL param from service worker (terminated PWA tap)
+    final webReceipt = getInitialReceiptFromUrl();
+    if (webReceipt != null && mounted) _openReceiptDetail(webReceipt);
   }
 
   void _onNotificationTap(RemoteMessage message) {
     if (!mounted) return;
+    debugPrint('[FCM tap] notification=${message.notification?.title} / ${message.notification?.body}');
+    debugPrint('[FCM tap] data=${message.data}');
     final data = message.data;
     if (data['type'] == 'sale_completed') {
       final receiptNumber = data['receipt_number'] as String? ?? '';
@@ -95,6 +108,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _onForegroundMessage(RemoteMessage message) {
     if (!mounted) return;
+    debugPrint('[FCM foreground] notification=${message.notification?.title} / ${message.notification?.body}');
+    debugPrint('[FCM foreground] data=${message.data}');
     final data = message.data;
     final type = data['type'] ?? '';
 

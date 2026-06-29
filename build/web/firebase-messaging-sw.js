@@ -35,7 +35,13 @@ messaging.onBackgroundMessage((payload) => {
 
   let title, body;
 
-  if (type === 'shift_opened') {
+  if (type === 'sale_completed') {
+    title = data.warehouse_name ?? 'New Sale';
+    const parts = [];
+    if (data.total != null) parts.push(fmtCurrency(data.total));
+    if (data.payment_method) parts.push(data.payment_method);
+    body = parts.join(' · ');
+  } else if (type === 'shift_opened') {
     const warehouse = data.warehouse_name ? ` — ${data.warehouse_name}` : '';
     title = `Shift Opened${warehouse}`;
     const parts = [];
@@ -66,4 +72,27 @@ messaging.onBackgroundMessage((payload) => {
     requireInteraction: true,
     data: data,
   });
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const data = event.notification.data ?? {};
+  const receiptNumber = data.receipt_number ?? '';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          if (receiptNumber) {
+            client.postMessage({ type: 'open_receipt', receipt_number: receiptNumber });
+          }
+          return client.focus();
+        }
+      }
+      const url = receiptNumber
+        ? `${self.location.origin}/?open_receipt=${encodeURIComponent(receiptNumber)}`
+        : self.location.origin;
+      return clients.openWindow(url);
+    })
+  );
 });
